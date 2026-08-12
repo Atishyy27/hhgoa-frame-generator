@@ -26,8 +26,34 @@ const downloadBtn = document.getElementById("download-btn");
 const shareBtn = document.getElementById("share-btn");
 const hint = document.getElementById("hint");
 const shareNote = document.getElementById("share-note");
+const canvasWrap = document.getElementById("canvas-wrap");
+const canvasFlash = document.getElementById("canvas-flash");
+const cursorGlow = document.getElementById("cursor-glow");
 
 let lastBlob = null;
+
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+if (!reduceMotion && window.matchMedia("(hover: hover)").matches) {
+  window.addEventListener("mousemove", e => {
+    cursorGlow.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+    cursorGlow.classList.add("active");
+  });
+  window.addEventListener("mouseleave", () => cursorGlow.classList.remove("active"));
+}
+
+function setFieldVisibility(mode) {
+  fields.forEach(f => {
+    const applies = f.dataset.for.split(",").includes(mode);
+    if (applies) {
+      f.hidden = false;
+      requestAnimationFrame(() => f.classList.remove("fade-out"));
+    } else if (!f.hidden) {
+      f.classList.add("fade-out");
+      setTimeout(() => { if (f.classList.contains("fade-out")) f.hidden = true; }, reduceMotion ? 0 : 220);
+    }
+  });
+}
 
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
@@ -35,16 +61,14 @@ tabs.forEach(tab => {
     tab.classList.add("active");
     tab.setAttribute("aria-selected", "true");
     state.mode = tab.dataset.mode;
-    fields.forEach(f => {
-      const applies = f.dataset.for.split(",").includes(state.mode);
-      f.hidden = !applies;
-    });
+    setFieldVisibility(state.mode);
     resetPreview();
   });
 });
 
 function resetPreview() {
   ctx.clearRect(0, 0, SIZE, SIZE);
+  canvas.classList.remove("ready");
   downloadBtn.disabled = true;
   shareBtn.disabled = true;
   shareNote.hidden = true;
@@ -99,7 +123,12 @@ function refreshTitle() {
 
 nameInput.addEventListener("input", refreshTitle);
 stackInput.addEventListener("input", refreshTitle);
-rerollBtn.addEventListener("click", () => { titleInput.value = generateTitle(null); });
+rerollBtn.addEventListener("click", () => {
+  titleInput.value = generateTitle(null);
+  rerollBtn.classList.remove("spinning");
+  void rerollBtn.offsetWidth;
+  rerollBtn.classList.add("spinning");
+});
 
 function coverDraw(img, dx, dy, dw, dh, radius = 0) {
   const scale = Math.max(dw / img.width, dh / img.height);
@@ -289,6 +318,11 @@ generateBtn.addEventListener("click", async () => {
   }
 
   hint.hidden = true;
+  canvas.classList.add("ready");
+  canvasFlash.classList.remove("play");
+  void canvasFlash.offsetWidth;
+  canvasFlash.classList.add("play");
+
   canvas.toBlob(blob => {
     lastBlob = blob;
     downloadBtn.disabled = false;

@@ -11,20 +11,29 @@
 </head>
 <body>
 
-<header class="site-header">
+<div class="cursor-glow" id="cursor-glow"></div>
+
+<div class="marquee">
+  <div class="marquee-track">
+    <span>BUILD. SHIP. REPEAT. &nbsp;·&nbsp; #FrameInGoa &nbsp;·&nbsp; HH GOA 2026 &nbsp;·&nbsp; LESS NOISE, MORE SIGNAL &nbsp;·&nbsp; </span>
+    <span>BUILD. SHIP. REPEAT. &nbsp;·&nbsp; #FrameInGoa &nbsp;·&nbsp; HH GOA 2026 &nbsp;·&nbsp; LESS NOISE, MORE SIGNAL &nbsp;·&nbsp; </span>
+  </div>
+</div>
+
+<header class="site-header reveal" style="--delay:0">
   <span class="brand-mark">2:47</span>
   <h1>HH GOA <span class="year">2026</span> — Frame Generator</h1>
   <p class="tagline">upload. frame. ship it with #FrameInGoa.</p>
 </header>
 
 <main>
-  <div class="tabs" role="tablist">
+  <div class="tabs reveal" style="--delay:1" role="tablist">
     <button class="tab active" data-mode="pfp" role="tab" aria-selected="true">PFP Frame</button>
     <button class="tab" data-mode="id" role="tab" aria-selected="false">Builder ID</button>
     <button class="tab" data-mode="team" role="tab" aria-selected="false">Team Frame</button>
   </div>
 
-  <section class="panel">
+  <section class="panel reveal" style="--delay:2">
 
     <div class="controls">
 
@@ -60,7 +69,10 @@
     </div>
 
     <div class="preview">
-      <canvas id="canvas" width="1080" height="1080"></canvas>
+      <div class="canvas-wrap" id="canvas-wrap">
+        <canvas id="canvas" width="1080" height="1080"></canvas>
+        <div class="canvas-flash" id="canvas-flash"></div>
+      </div>
       <p class="hint" id="hint">upload a photo to preview your frame</p>
       <div class="actions">
         <button type="button" id="download-btn" disabled>Download PNG</button>
