@@ -1,0 +1,13 @@
+/* Vite's default scaffold ships its own themed reset (#root width/border,
+   purple accent vars, h1/h2 sizing) — replaced with a minimal reset since
+   App.css already defines the full page layout and fighting two stylesheets
+   for the same elements (#root width constraints, text-align) would break
+   the full-bleed marquee and postcard-frame layout. */
+
+* { box-sizing: border-box; }
+
+body { margin: 0; }
+
+#root {
+  min-height: 100vh;
+}
