@@ -14,22 +14,22 @@ Built for **Hacker House Goa 2026, Task #1**. Upload a photo, get a branded HH G
 - Optional ambient beach-wave audio (CC0-licensed)
 - Everything reactive — the canvas redraws live as you type or upload, no manual "generate" required to preview
 
-## Stack: plain HTML/CSS/JS, on purpose
+## Stack
 
-No React, no build step, no bundler. That's a deliberate call, not an oversight:
+**React + Vite**, source in `react/`. The live site is the built output of that project, deployed to the `gh-pages` branch — `main` holds the source for both this project and the earlier plain HTML/CSS/JS version (`index.html`/`style.css`/`script.js` at the repo root), kept as history rather than deleted.
 
-- **Speed to ship** — static files deploy to GitHub Pages directly; no build pipeline to configure or debug
-- **Zero dependencies to break** — the only external code is the (verified, pinned-version) MediaPipe segmentation model and a small QR-generation library, both loaded lazily and only when actually used
-- **The task doesn't need a framework** — it's a canvas-manipulation tool with a handful of toggled UI states, not an app with routing or complex shared state
+The original build was intentionally plain HTML/CSS/JS — no build step, fastest possible path to a working deploy under a same-day deadline. That reasoning held up: nothing about the task needed a framework, and the vanilla version shipped every feature below just fine. It moved to React because more capable UI (postcard chrome, live countdown, multi-share, more Builder ID fields) kept stacking on top of it and framework tooling handles that better long-term — not because the vanilla version was broken. One genuine win from the move: React's conditional rendering means a hidden element is simply absent from the DOM, so the `[hidden]`-vs-`display` CSS specificity bug that had to be fixed in the vanilla build (element.hidden silently doing nothing on 4 components) can't happen here at all — it's structurally not possible.
+
+Canvas drawing (`react/src/lib/draw.js`) stays plain imperative functions called via a ref, not JSX — that's the correct way to mix Canvas with React rather than fighting it.
 
 Colors and fonts (`#0B6839`, `#FEE101`, `#FFFBE8`, Imbue + Victor Mono) are pulled directly from HH Goa's own site CSS, not guessed.
 
 ## Running locally
 
-No build step — just open `index.html` in a browser, or serve the folder with any static server:
-
 ```
-npx serve .
+cd react
+npm install
+npm run dev
 ```
 
 ## Commit history
