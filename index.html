@@ -12,6 +12,8 @@
 <body>
 
 <div class="cursor-glow" id="cursor-glow"></div>
+<canvas class="confetti-canvas" id="confetti-canvas"></canvas>
+<div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
 <div class="marquee">
   <div class="marquee-track">
@@ -39,12 +41,30 @@
 
       <div class="field" data-for="pfp,id">
         <label for="photo-single">Photo</label>
-        <input type="file" id="photo-single" accept="image/*">
+        <div class="dropzone" id="dropzone-single" tabindex="0" role="button" aria-label="Upload photo">
+          <div class="dropzone-idle">
+            <span class="dropzone-icon">⤒</span>
+            <span class="dropzone-text">drop a photo or tap to upload</span>
+          </div>
+          <img class="dropzone-thumb" id="thumb-single" alt="" hidden>
+        </div>
+        <input type="file" id="photo-single" accept="image/*" hidden>
+        <label class="checkbox-row" id="bg-remove-row" hidden>
+          <input type="checkbox" id="bg-remove">
+          <span>Remove background <em>(beta, ~2-5s)</em></span>
+        </label>
       </div>
 
       <div class="field" data-for="team" hidden>
         <label for="photo-multi">Team photos (2–4)</label>
-        <input type="file" id="photo-multi" accept="image/*" multiple>
+        <div class="dropzone" id="dropzone-multi" tabindex="0" role="button" aria-label="Upload team photos">
+          <div class="dropzone-idle">
+            <span class="dropzone-icon">⤒</span>
+            <span class="dropzone-text">drop 2-4 photos or tap to upload</span>
+          </div>
+          <div class="dropzone-thumbs" id="thumbs-multi" hidden></div>
+        </div>
+        <input type="file" id="photo-multi" accept="image/*" multiple hidden>
       </div>
 
       <div class="field" data-for="id" hidden>
@@ -83,6 +103,13 @@
 
   </section>
 </main>
+
+<div class="marquee marquee-reverse">
+  <div class="marquee-track marquee-track-reverse">
+    <span>#FrameInGoa &nbsp;·&nbsp; 247 BUILDERS &nbsp;·&nbsp; GOA, INDIA &nbsp;·&nbsp; 28-31 OCT 2026 &nbsp;·&nbsp; </span>
+    <span>#FrameInGoa &nbsp;·&nbsp; 247 BUILDERS &nbsp;·&nbsp; GOA, INDIA &nbsp;·&nbsp; 28-31 OCT 2026 &nbsp;·&nbsp; </span>
+  </div>
+</div>
 
 <footer class="site-footer">
   <p>fan-built for HH Goa 2026 Task #1 · not an official HH Goa / 247pm Studio product</p>

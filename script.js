@@ -10,13 +10,20 @@ const ctx = canvas.getContext("2d");
 const state = {
   mode: "pfp",
   singlePhoto: null,
+  singlePhotoProcessed: null,
   multiPhotos: [],
 };
 
 const tabs = document.querySelectorAll(".tab");
 const fields = document.querySelectorAll(".field");
+const dropzoneSingle = document.getElementById("dropzone-single");
+const dropzoneMulti = document.getElementById("dropzone-multi");
+const thumbSingle = document.getElementById("thumb-single");
+const thumbsMulti = document.getElementById("thumbs-multi");
 const photoSingleInput = document.getElementById("photo-single");
 const photoMultiInput = document.getElementById("photo-multi");
+const bgRemoveRow = document.getElementById("bg-remove-row");
+const bgRemoveCheckbox = document.getElementById("bg-remove");
 const nameInput = document.getElementById("builder-name");
 const stackInput = document.getElementById("builder-stack");
 const titleInput = document.getElementById("builder-title");
@@ -26,13 +33,17 @@ const downloadBtn = document.getElementById("download-btn");
 const shareBtn = document.getElementById("share-btn");
 const hint = document.getElementById("hint");
 const shareNote = document.getElementById("share-note");
-const canvasWrap = document.getElementById("canvas-wrap");
 const canvasFlash = document.getElementById("canvas-flash");
 const cursorGlow = document.getElementById("cursor-glow");
+const toastStack = document.getElementById("toast-stack");
+const confettiCanvas = document.getElementById("confetti-canvas");
+const confettiCtx = confettiCanvas.getContext("2d");
 
 let lastBlob = null;
 
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------- cursor glow ---------- */
 
 if (!reduceMotion && window.matchMedia("(hover: hover)").matches) {
   window.addEventListener("mousemove", e => {
@@ -41,6 +52,77 @@ if (!reduceMotion && window.matchMedia("(hover: hover)").matches) {
   });
   window.addEventListener("mouseleave", () => cursorGlow.classList.remove("active"));
 }
+
+/* ---------- toast notifications ---------- */
+
+function showToast(message, type = "info", duration = 3200) {
+  const el = document.createElement("div");
+  el.className = `toast toast-${type}`;
+  el.textContent = message;
+  toastStack.appendChild(el);
+  setTimeout(() => {
+    el.classList.add("leaving");
+    setTimeout(() => el.remove(), reduceMotion ? 0 : 260);
+  }, duration);
+}
+
+/* ---------- confetti ---------- */
+
+function resizeConfetti() {
+  confettiCanvas.width = window.innerWidth;
+  confettiCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeConfetti);
+resizeConfetti();
+
+const CONFETTI_COLORS = [YELLOW, "#F9DC01", GREEN, CREAM, "#FFFFFF"];
+let confettiParticles = [];
+let confettiRAF = null;
+
+function burstConfetti() {
+  const originX = confettiCanvas.width / 2;
+  const originY = confettiCanvas.height * 0.35;
+  for (let i = 0; i < 90; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 4 + Math.random() * 7;
+    confettiParticles.push({
+      x: originX,
+      y: originY,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 4,
+      size: 5 + Math.random() * 5,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      rotation: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 0.3,
+      life: 0,
+      maxLife: 60 + Math.random() * 30,
+    });
+  }
+  if (!confettiRAF) confettiRAF = requestAnimationFrame(tickConfetti);
+}
+
+function tickConfetti() {
+  confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+  confettiParticles = confettiParticles.filter(p => p.life < p.maxLife);
+  confettiParticles.forEach(p => {
+    p.vy += 0.18;
+    p.x += p.vx;
+    p.y += p.vy;
+    p.rotation += p.spin;
+    p.life++;
+    const alpha = Math.max(0, 1 - p.life / p.maxLife);
+    confettiCtx.save();
+    confettiCtx.globalAlpha = alpha;
+    confettiCtx.translate(p.x, p.y);
+    confettiCtx.rotate(p.rotation);
+    confettiCtx.fillStyle = p.color;
+    confettiCtx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+    confettiCtx.restore();
+  });
+  confettiRAF = confettiParticles.length > 0 ? requestAnimationFrame(tickConfetti) : null;
+}
+
+/* ---------- tabs / field visibility ---------- */
 
 function setFieldVisibility(mode) {
   fields.forEach(f => {
@@ -55,6 +137,10 @@ function setFieldVisibility(mode) {
   });
 }
 
+function updateBgRemoveVisibility() {
+  bgRemoveRow.hidden = !(state.singlePhoto && (state.mode === "pfp" || state.mode === "id"));
+}
+
 tabs.forEach(tab => {
   tab.addEventListener("click", () => {
     tabs.forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
@@ -62,21 +148,34 @@ tabs.forEach(tab => {
     tab.setAttribute("aria-selected", "true");
     state.mode = tab.dataset.mode;
     setFieldVisibility(state.mode);
-    resetPreview();
+    refreshForModeChange();
   });
 });
 
-function resetPreview() {
-  ctx.clearRect(0, 0, SIZE, SIZE);
-  canvas.classList.remove("ready");
+function placeholderHintText(mode) {
+  return mode === "team"
+    ? "showing a placeholder — upload 2-4 team photos to personalize"
+    : "showing a placeholder — upload your photo to personalize";
+}
+
+function refreshForModeChange() {
   downloadBtn.disabled = true;
   shareBtn.disabled = true;
   shareNote.hidden = true;
-  hint.hidden = false;
-  hint.textContent = state.mode === "team"
-    ? "upload 2-4 team photos to preview your frame"
-    : "upload a photo to preview your frame";
+  updateBgRemoveVisibility();
+
+  const hasContent = state.mode === "team" ? state.multiPhotos.length >= 2 : !!state.singlePhoto;
+  if (hasContent) {
+    runGenerate({ auto: true });
+  } else {
+    drawForMode(null);
+    canvas.classList.remove("ready");
+    hint.hidden = false;
+    hint.textContent = placeholderHintText(state.mode);
+  }
 }
+
+/* ---------- image loading ---------- */
 
 function loadImageFile(file) {
   return new Promise((resolve, reject) => {
@@ -87,16 +186,163 @@ function loadImageFile(file) {
   });
 }
 
-photoSingleInput.addEventListener("change", async () => {
-  const file = photoSingleInput.files[0];
-  if (!file) return;
-  state.singlePhoto = await loadImageFile(file);
+function wireDropzone(dropzoneEl, inputEl, onFiles) {
+  dropzoneEl.addEventListener("click", () => inputEl.click());
+  dropzoneEl.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); inputEl.click(); }
+  });
+  ["dragover", "dragenter"].forEach(evt => dropzoneEl.addEventListener(evt, e => {
+    e.preventDefault();
+    dropzoneEl.classList.add("drag-over");
+  }));
+  ["dragleave", "dragend"].forEach(evt => dropzoneEl.addEventListener(evt, () => {
+    dropzoneEl.classList.remove("drag-over");
+  }));
+  dropzoneEl.addEventListener("drop", e => {
+    e.preventDefault();
+    dropzoneEl.classList.remove("drag-over");
+    const files = Array.from(e.dataTransfer ? e.dataTransfer.files : []).filter(f => f.type.startsWith("image/"));
+    if (files.length) onFiles(files);
+  });
+  inputEl.addEventListener("change", () => {
+    const files = Array.from(inputEl.files || []);
+    if (files.length) onFiles(files);
+  });
+}
+
+wireDropzone(dropzoneSingle, photoSingleInput, async files => {
+  let img;
+  try {
+    img = await loadImageFile(files[0]);
+  } catch {
+    showToast("Couldn't read that image — try a different file.", "error");
+    return;
+  }
+  state.singlePhoto = img;
+  state.singlePhotoProcessed = null;
+  bgRemoveCheckbox.checked = false;
+  thumbSingle.src = img.src;
+  thumbSingle.hidden = false;
+  const idle = dropzoneSingle.querySelector(".dropzone-idle");
+  if (idle) idle.style.display = "none";
+  updateBgRemoveVisibility();
+  runGenerate({ auto: true });
 });
 
-photoMultiInput.addEventListener("change", async () => {
-  const files = Array.from(photoMultiInput.files).slice(0, 4);
-  state.multiPhotos = await Promise.all(files.map(loadImageFile));
+wireDropzone(dropzoneMulti, photoMultiInput, async files => {
+  if (files.length > 4) showToast("Only using the first 4 photos.", "info");
+  const picked = files.slice(0, 4);
+  let imgs;
+  try {
+    imgs = await Promise.all(picked.map(loadImageFile));
+  } catch {
+    showToast("Couldn't read one of those images — try different files.", "error");
+    return;
+  }
+  state.multiPhotos = imgs;
+  thumbsMulti.innerHTML = "";
+  imgs.forEach(img => {
+    const el = document.createElement("img");
+    el.src = img.src;
+    el.alt = "";
+    thumbsMulti.appendChild(el);
+  });
+  thumbsMulti.hidden = false;
+  const idle = dropzoneMulti.querySelector(".dropzone-idle");
+  if (idle) idle.style.display = "none";
+  runGenerate({ auto: true });
 });
+
+/* ---------- background remover (optional, MediaPipe selfie segmenter) ---------- */
+
+const MEDIAPIPE_VERSION = "0.10.14";
+const VISION_BUNDLE_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/vision_bundle.mjs`;
+const VISION_WASM_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
+const SELFIE_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite";
+
+let segmenterPromise = null;
+function getSegmenter() {
+  if (!segmenterPromise) {
+    segmenterPromise = (async () => {
+      const { FilesetResolver, ImageSegmenter } = await import(VISION_BUNDLE_URL);
+      const vision = await FilesetResolver.forVisionTasks(VISION_WASM_URL);
+      return ImageSegmenter.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: SELFIE_MODEL_URL },
+        runningMode: "IMAGE",
+        outputCategoryMask: true,
+        outputConfidenceMasks: false,
+      });
+    })();
+  }
+  return segmenterPromise;
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("segmentation timed out")), ms)),
+  ]);
+}
+
+async function removeBackground(img) {
+  const { DrawingUtils } = await import(VISION_BUNDLE_URL);
+  const segmenter = await withTimeout(getSegmenter(), 8000);
+  const result = segmenter.segment(img);
+  const mask = result && result.categoryMask;
+  if (!mask) throw new Error("no category mask returned");
+
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.width = mask.width;
+  maskCanvas.height = mask.height;
+  const glCtx = maskCanvas.getContext("webgl2");
+  if (!glCtx) { mask.close(); throw new Error("webgl2 unavailable"); }
+  const drawingUtils = new DrawingUtils(glCtx);
+  drawingUtils.drawCategoryMask(mask, [[0, 0, 0, 0], [255, 255, 255, 255]], [0, 0, 0, 0]);
+  mask.close();
+
+  const out = document.createElement("canvas");
+  out.width = img.naturalWidth || img.width;
+  out.height = img.naturalHeight || img.height;
+  const octx = out.getContext("2d");
+  octx.drawImage(img, 0, 0, out.width, out.height);
+  octx.globalCompositeOperation = "destination-in";
+  octx.drawImage(maskCanvas, 0, 0, out.width, out.height);
+  octx.globalCompositeOperation = "source-over";
+  return out;
+}
+
+async function triggerBgRemoval() {
+  if (!state.singlePhoto) return;
+  if (state.singlePhotoProcessed) { runGenerate({ auto: true }); return; }
+  dropzoneSingle.classList.add("drag-over");
+  showToast("Removing background…", "info", 4000);
+  try {
+    state.singlePhotoProcessed = await removeBackground(state.singlePhoto);
+    showToast("Background removed.", "success");
+  } catch (err) {
+    console.warn("bg removal unavailable:", err);
+    bgRemoveCheckbox.checked = false;
+    showToast("Background removal isn't available here — using the original photo.", "error");
+  } finally {
+    dropzoneSingle.classList.remove("drag-over");
+    runGenerate({ auto: true });
+  }
+}
+
+bgRemoveCheckbox.addEventListener("change", () => {
+  if (bgRemoveCheckbox.checked) {
+    triggerBgRemoval();
+  } else {
+    runGenerate({ auto: true });
+  }
+});
+
+function pickSinglePhoto() {
+  if (bgRemoveCheckbox.checked && state.singlePhotoProcessed) return state.singlePhotoProcessed;
+  return state.singlePhoto;
+}
+
+/* ---------- builder title generator ---------- */
 
 const ADJ = ["Terminal", "Midnight", "Feral", "Quantum", "Rogue", "Caffeinated", "Serverless", "Recursive", "Chaotic", "Velvet", "Barefoot", "Salt-Air"];
 const NOUN = ["Sorcerer", "Shipper", "Architect", "Wrangler", "Alchemist", "Operator", "Gremlin", "Cartographer", "Tinkerer", "Oracle", "Pirate", "Deckhand"];
@@ -121,14 +367,26 @@ function refreshTitle() {
   titleInput.value = generateTitle(seed.trim() ? seed : null);
 }
 
-nameInput.addEventListener("input", refreshTitle);
-stackInput.addEventListener("input", refreshTitle);
+function debounce(fn, wait) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+}
+
+const debouncedIdRegenerate = debounce(() => {
+  if (state.mode === "id" && state.singlePhoto) runGenerate({ auto: true });
+}, 350);
+
+nameInput.addEventListener("input", () => { refreshTitle(); debouncedIdRegenerate(); });
+stackInput.addEventListener("input", () => { refreshTitle(); debouncedIdRegenerate(); });
 rerollBtn.addEventListener("click", () => {
   titleInput.value = generateTitle(null);
   rerollBtn.classList.remove("spinning");
   void rerollBtn.offsetWidth;
   rerollBtn.classList.add("spinning");
+  if (state.mode === "id" && state.singlePhoto) runGenerate({ auto: true });
 });
+
+/* ---------- canvas drawing ---------- */
 
 function coverDraw(img, dx, dy, dw, dh, radius = 0) {
   const scale = Math.max(dw / img.width, dh / img.height);
@@ -143,6 +401,32 @@ function coverDraw(img, dx, dy, dw, dh, radius = 0) {
   }
   ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
   if (radius > 0) ctx.restore();
+}
+
+function drawSilhouette(x, y, w, h, radius = 0) {
+  ctx.save();
+  if (radius > 0) { roundRectPath(x, y, w, h, radius); ctx.clip(); }
+  const grad = ctx.createLinearGradient(x, y, x, y + h);
+  grad.addColorStop(0, "#0f7a42");
+  grad.addColorStop(1, "#0a5730");
+  ctx.fillStyle = grad;
+  ctx.fillRect(x, y, w, h);
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const headR = Math.min(w, h) * 0.16;
+  ctx.fillStyle = "rgba(255,251,232,0.35)";
+  ctx.beginPath();
+  ctx.arc(cx, cy - headR * 0.9, headR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + headR * 1.7, headR * 1.9, headR * 1.7, 0, Math.PI, 0, true);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawPhotoOrPlaceholder(img, x, y, w, h, radius = 0) {
+  if (img) coverDraw(img, x, y, w, h, radius);
+  else drawSilhouette(x, y, w, h, radius);
 }
 
 function roundRectPath(x, y, w, h, r) {
@@ -215,9 +499,8 @@ function drawPFP(img) {
   drawChrome({ bottomBandHeight: 150, topBandHeight: 60 });
   const pad = 40;
   const top = 60 + 14;
-  const size = SIZE - pad * 2;
   const bottom = SIZE - 150 + 14;
-  coverDraw(img, pad, top, SIZE - pad * 2, bottom - top, 20);
+  drawPhotoOrPlaceholder(img, pad, top, SIZE - pad * 2, bottom - top, 20);
 }
 
 function drawTeam(imgs) {
@@ -228,17 +511,18 @@ function drawTeam(imgs) {
   const areaW = SIZE - pad * 2;
   const areaH = bottom - top;
   const gap = 10;
-  const n = imgs.length;
+  const list = imgs.length ? imgs : [null, null];
+  const n = list.length;
   const cols = n === 3 ? 3 : Math.min(n, 2);
   const rows = Math.ceil(n / cols);
   const cellW = (areaW - gap * (cols - 1)) / cols;
   const cellH = (areaH - gap * (rows - 1)) / rows;
-  imgs.forEach((img, i) => {
+  list.forEach((img, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
     const x = pad + col * (cellW + gap);
     const y = top + row * (cellH + gap);
-    coverDraw(img, x, y, cellW, cellH, 14);
+    drawPhotoOrPlaceholder(img, x, y, cellW, cellH, 14);
   });
 }
 
@@ -267,7 +551,7 @@ function drawID(img, name, stack, title) {
   ctx.lineWidth = 8;
   roundRectPath(photoX - 6, photoY - 6, photoSize + 12, photoSize + 12, 26);
   ctx.stroke();
-  coverDraw(img, photoX, photoY, photoSize, photoSize, 20);
+  drawPhotoOrPlaceholder(img, photoX, photoY, photoSize, photoSize, 20);
 
   ctx.textAlign = "center";
   ctx.fillStyle = CREAM;
@@ -294,6 +578,17 @@ function drawID(img, name, stack, title) {
   ctx.fillText("HH GOA 2026 · BUILDER ID", SIZE / 2, SIZE - 44);
 }
 
+function drawForMode(_unusedTrigger) {
+  if (state.mode === "pfp") {
+    drawPFP(pickSinglePhoto());
+  } else if (state.mode === "id") {
+    if (!titleInput.value) refreshTitle();
+    drawID(pickSinglePhoto(), nameInput.value.trim(), stackInput.value.trim(), titleInput.value);
+  } else {
+    drawTeam(state.multiPhotos);
+  }
+}
+
 async function ensureFontsReady() {
   if (document.fonts && document.fonts.ready) {
     await document.fonts.load("700 58px 'Imbue'");
@@ -302,20 +597,24 @@ async function ensureFontsReady() {
   }
 }
 
-generateBtn.addEventListener("click", async () => {
+/* ---------- generate ---------- */
+
+async function runGenerate({ auto = false, celebrate = false } = {}) {
   await ensureFontsReady();
 
-  if (state.mode === "pfp") {
-    if (!state.singlePhoto) { alert("Upload a photo first."); return; }
-    drawPFP(state.singlePhoto);
-  } else if (state.mode === "id") {
-    if (!state.singlePhoto) { alert("Upload a photo first."); return; }
-    if (!titleInput.value) refreshTitle();
-    drawID(state.singlePhoto, nameInput.value.trim(), stackInput.value.trim(), titleInput.value);
+  if (state.mode === "pfp" || state.mode === "id") {
+    if (!state.singlePhoto) {
+      if (!auto) showToast("Upload a photo first.", "error");
+      return false;
+    }
   } else if (state.mode === "team") {
-    if (state.multiPhotos.length < 2) { alert("Upload at least 2 team photos."); return; }
-    drawTeam(state.multiPhotos);
+    if (state.multiPhotos.length < 2) {
+      if (!auto) showToast("Upload at least 2 team photos.", "error");
+      return false;
+    }
   }
+
+  drawForMode();
 
   hint.hidden = true;
   canvas.classList.add("ready");
@@ -328,7 +627,15 @@ generateBtn.addEventListener("click", async () => {
     downloadBtn.disabled = false;
     shareBtn.disabled = false;
   }, "image/png");
-});
+
+  if (celebrate) {
+    if (!reduceMotion) burstConfetti();
+    showToast("Frame ready — download or share it 🎉", "success");
+  }
+  return true;
+}
+
+generateBtn.addEventListener("click", () => runGenerate({ auto: false, celebrate: true }));
 
 downloadBtn.addEventListener("click", () => {
   if (!lastBlob) return;
@@ -359,8 +666,7 @@ shareBtn.addEventListener("click", async () => {
   downloadBtn.click();
   const intentUrl = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
   window.open(intentUrl, "_blank", "noopener");
-  shareNote.hidden = false;
-  shareNote.textContent = "Image downloaded — attach it to the X post that just opened.";
+  showToast("Image downloaded — attach it to the X post that just opened.", "info", 4500);
 });
 
-resetPreview();
+refreshForModeChange();
