@@ -84,7 +84,8 @@ body {
 }
 
 .marquee {
-  width: 100%;
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
   overflow: hidden;
   background: var(--yellow);
   color: var(--green-dark);
@@ -106,9 +107,10 @@ body {
 .marquee-reverse {
   background: var(--green);
   color: var(--cream);
-  margin-top: 28px;
+  margin-top: 48px;
   margin-bottom: 0;
   border-top: 1px solid rgba(254,225,1,0.3);
+  align-self: stretch;
 }
 
 .marquee-track-reverse {

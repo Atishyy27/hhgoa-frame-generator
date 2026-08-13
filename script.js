@@ -261,6 +261,7 @@ const VISION_WASM_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${
 const SELFIE_MODEL_URL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite";
 
 let segmenterPromise = null;
+
 function getSegmenter() {
   if (!segmenterPromise) {
     segmenterPromise = (async () => {
@@ -284,21 +285,41 @@ function withTimeout(promise, ms) {
   ]);
 }
 
+// CPU-array approach on purpose: categoryMask.getAsUint8Array() gives one byte
+// per pixel = the predicted class index (0 background, 1 person) directly, per
+// MediaPipe's own MPMask docs. A first version of this routed through a WebGL
+// canvas + DrawingUtils.drawCategoryMask() instead, and in real-browser testing
+// it wiped the *entire* photo, not just the background — almost certainly a
+// blank mask from a WebGL-context mismatch that static review couldn't catch.
+// This version has no WebGL context to get wrong.
 async function removeBackground(img) {
-  const { DrawingUtils } = await import(VISION_BUNDLE_URL);
   const segmenter = await withTimeout(getSegmenter(), 8000);
   const result = segmenter.segment(img);
   const mask = result && result.categoryMask;
   if (!mask) throw new Error("no category mask returned");
 
-  const maskCanvas = document.createElement("canvas");
-  maskCanvas.width = mask.width;
-  maskCanvas.height = mask.height;
-  const glCtx = maskCanvas.getContext("webgl2");
-  if (!glCtx) { mask.close(); throw new Error("webgl2 unavailable"); }
-  const drawingUtils = new DrawingUtils(glCtx);
-  drawingUtils.drawCategoryMask(mask, [[0, 0, 0, 0], [255, 255, 255, 255]], [0, 0, 0, 0]);
+  const maskW = mask.width;
+  const maskH = mask.height;
+  const maskData = mask.getAsUint8Array();
   mask.close();
+
+  const maskImgData = new ImageData(maskW, maskH);
+  let hasOpaquePixel = false;
+  for (let i = 0; i < maskW * maskH; i++) {
+    const isPerson = maskData[i] === 1;
+    if (isPerson) hasOpaquePixel = true;
+    const o = i * 4;
+    maskImgData.data[o] = 255;
+    maskImgData.data[o + 1] = 255;
+    maskImgData.data[o + 2] = 255;
+    maskImgData.data[o + 3] = isPerson ? 255 : 0;
+  }
+  if (!hasOpaquePixel) throw new Error("segmentation mask came back empty — refusing to wipe the photo");
+
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.width = maskW;
+  maskCanvas.height = maskH;
+  maskCanvas.getContext("2d").putImageData(maskImgData, 0, 0);
 
   const out = document.createElement("canvas");
   out.width = img.naturalWidth || img.width;
