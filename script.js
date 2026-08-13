@@ -46,6 +46,10 @@ const beachAudio = document.getElementById("beach-audio");
 const generateBtn = document.getElementById("generate");
 const downloadBtn = document.getElementById("download-btn");
 const shareBtn = document.getElementById("share-btn");
+const shareWhatsapp = document.getElementById("share-whatsapp");
+const shareLinkedin = document.getElementById("share-linkedin");
+const shareCopy = document.getElementById("share-copy");
+const countdownValue = document.getElementById("countdown-value");
 const hint = document.getElementById("hint");
 const shareNote = document.getElementById("share-note");
 const canvasFlash = document.getElementById("canvas-flash");
@@ -67,6 +71,25 @@ if (!reduceMotion && window.matchMedia("(hover: hover)").matches) {
   });
   window.addEventListener("mouseleave", () => cursorGlow.classList.remove("active"));
 }
+
+/* ---------- countdown to the residency ---------- */
+
+const RESIDENCY_START = new Date("2026-10-28T00:00:00+05:30").getTime();
+
+function tickCountdown() {
+  const diff = RESIDENCY_START - Date.now();
+  if (diff <= 0) {
+    countdownValue.textContent = "we're in Goa 🌴";
+    return;
+  }
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  countdownValue.textContent = `${d}d ${h}h ${m}m ${s}s`;
+}
+tickCountdown();
+setInterval(tickCountdown, 1000);
 
 /* ---------- toast notifications ---------- */
 
@@ -182,6 +205,9 @@ function placeholderHintText(mode) {
 function refreshForModeChange() {
   downloadBtn.disabled = true;
   shareBtn.disabled = true;
+  shareWhatsapp.disabled = true;
+  shareLinkedin.disabled = true;
+  shareCopy.disabled = true;
   shareNote.hidden = true;
   updateBgRemoveVisibility();
 
@@ -978,6 +1004,9 @@ async function runGenerate({ auto = false, celebrate = false } = {}) {
     lastBlob = blob;
     downloadBtn.disabled = false;
     shareBtn.disabled = false;
+    shareWhatsapp.disabled = false;
+    shareLinkedin.disabled = false;
+    shareCopy.disabled = false;
   }, "image/png");
 
   if (celebrate) {
@@ -1019,6 +1048,33 @@ shareBtn.addEventListener("click", async () => {
   const intentUrl = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
   window.open(intentUrl, "_blank", "noopener");
   showToast("Image downloaded — attach it to the X post that just opened.", "info", 4500);
+});
+
+const SHARE_CAPTION = "Locked in for HH Goa 2026 🌴 #FrameInGoa";
+
+shareWhatsapp.addEventListener("click", () => {
+  if (!lastBlob) return;
+  downloadBtn.click();
+  const text = `${SHARE_CAPTION}\n${LIVE_URL}`;
+  window.open("https://wa.me/?text=" + encodeURIComponent(text), "_blank", "noopener");
+  showToast("Image downloaded — attach it in the WhatsApp chat that just opened.", "info", 4500);
+});
+
+shareLinkedin.addEventListener("click", () => {
+  if (!lastBlob) return;
+  downloadBtn.click();
+  window.open("https://www.linkedin.com/sharing/share-offsite/?url=" + encodeURIComponent(LIVE_URL), "_blank", "noopener");
+  showToast("Image downloaded — LinkedIn doesn't accept a pre-filled caption, paste it and attach the image yourself.", "info", 5500);
+});
+
+shareCopy.addEventListener("click", async () => {
+  const text = `${SHARE_CAPTION}\n${LIVE_URL}`;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Caption copied — paste it into Instagram (or anywhere) and attach the downloaded image.", "success", 4500);
+  } catch {
+    showToast("Couldn't copy automatically — caption: " + text, "info", 6000);
+  }
 });
 
 refreshForModeChange();

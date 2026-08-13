@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Imbue:opsz,wght@10..100,400;10..100,600;10..100,700&family=Victor+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 
@@ -27,20 +27,32 @@
   </div>
 </div>
 
-<header class="site-header reveal" style="--delay:0">
-  <span class="brand-mark">2:47</span>
-  <h1>HH GOA <span class="year">2026</span> — Frame Generator</h1>
-  <p class="tagline">upload. frame. ship it with #FrameInGoa.</p>
-</header>
+<div class="postcard-frame">
+  <div class="pf-stamp">
+    <span>GOA · INDIA</span>
+    <span class="pf-stamp-year">HH 2026</span>
+  </div>
+  <div class="pf-mail" aria-hidden="true">✉️</div>
 
-<main>
-  <div class="tabs reveal" style="--delay:1" role="tablist">
+  <header class="site-header reveal" style="--delay:0">
+    <span class="brand-mark">2:47</span>
+    <h1>HH GOA <span class="year">2026</span> — Frame Generator</h1>
+    <p class="tagline">upload. frame. ship it with #FrameInGoa.</p>
+  </header>
+
+  <div class="countdown reveal" style="--delay:1">
+    <span class="countdown-label">✈ GOA ARRIVAL · 28 OCT 2026</span>
+    <span class="countdown-value" id="countdown-value">--d --h --m --s</span>
+  </div>
+
+  <main>
+  <div class="tabs reveal" style="--delay:2" role="tablist">
     <button class="tab active" data-mode="pfp" role="tab" aria-selected="true">PFP Frame</button>
     <button class="tab" data-mode="id" role="tab" aria-selected="false">Builder ID</button>
     <button class="tab" data-mode="team" role="tab" aria-selected="false">Team Frame</button>
   </div>
 
-  <section class="panel reveal" style="--delay:2">
+  <section class="panel reveal" style="--delay:3">
 
     <div class="controls">
 
@@ -135,11 +147,17 @@
         <button type="button" id="download-btn" disabled>Download PNG</button>
         <button type="button" id="share-btn" disabled>Share to X</button>
       </div>
+      <div class="share-more">
+        <button type="button" class="share-chip" id="share-whatsapp" disabled title="Share to WhatsApp">WhatsApp</button>
+        <button type="button" class="share-chip" id="share-linkedin" disabled title="Share to LinkedIn">LinkedIn</button>
+        <button type="button" class="share-chip" id="share-copy" disabled title="Copy caption for Instagram">Copy caption</button>
+      </div>
       <p class="share-fallback-note" id="share-note" hidden></p>
     </div>
 
   </section>
 </main>
+</div>
 
 <div class="marquee marquee-reverse">
   <div class="marquee-track marquee-track-reverse">
@@ -153,6 +171,6 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="script.js?v=6"></script>
+<script src="script.js?v=7"></script>
 </body>
 </html>
