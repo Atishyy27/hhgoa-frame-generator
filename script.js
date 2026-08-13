@@ -272,6 +272,7 @@ wireDropzone(dropzoneMulti, photoMultiInput, async files => {
 /* ---------- selfie capture ---------- */
 
 let cameraStream = null;
+let cameraReadyTimeout = null;
 
 async function openCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -286,14 +287,33 @@ async function openCamera() {
   }
   cameraVideo.srcObject = cameraStream;
   cameraModal.hidden = false;
+  cameraCaptureBtn.disabled = true;
+  cameraCaptureBtn.textContent = "Starting…";
+
+  clearTimeout(cameraReadyTimeout);
+  cameraReadyTimeout = setTimeout(() => {
+    if (cameraCaptureBtn.disabled) {
+      showToast("Camera feed isn't coming through — this laptop's camera may not be working. Upload a photo instead.", "error", 5000);
+    }
+  }, 4000);
+
+  cameraVideo.onloadedmetadata = () => {
+    clearTimeout(cameraReadyTimeout);
+    cameraCaptureBtn.disabled = false;
+    cameraCaptureBtn.textContent = "Capture";
+  };
 }
 
 function closeCamera() {
+  clearTimeout(cameraReadyTimeout);
+  cameraVideo.onloadedmetadata = null;
   if (cameraStream) {
     cameraStream.getTracks().forEach(t => t.stop());
     cameraStream = null;
   }
   cameraModal.hidden = true;
+  cameraCaptureBtn.disabled = false;
+  cameraCaptureBtn.textContent = "Capture";
 }
 
 selfieBtn.addEventListener("click", openCamera);
