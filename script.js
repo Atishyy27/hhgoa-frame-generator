@@ -71,9 +71,15 @@ if (!reduceMotion && window.matchMedia("(hover: hover)").matches) {
 /* ---------- toast notifications ---------- */
 
 function showToast(message, type = "info", duration = 3200) {
+  const dupe = Array.from(toastStack.children).find(
+    el => el.dataset.message === message && !el.classList.contains("leaving")
+  );
+  if (dupe) return;
+
   const el = document.createElement("div");
   el.className = `toast toast-${type}`;
   el.textContent = message;
+  el.dataset.message = message;
   toastStack.appendChild(el);
   setTimeout(() => {
     el.classList.add("leaving");

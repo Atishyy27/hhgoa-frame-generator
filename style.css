@@ -11,6 +11,21 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute and an authored `display` rule on the same class
+   have EQUAL CSS specificity (0,1,0 each) — an author stylesheet loads after
+   the browser's default `[hidden]{display:none}`, so on a tie the author
+   rule wins and `element.hidden = true` silently does nothing. Every class
+   below sets `display` AND is toggled via `.hidden` in script.js — this
+   compound selector has higher specificity and forces the override to
+   actually work. Real bug, caught live: the camera modal was getting stuck
+   open forever after the first use because of exactly this. */
+.camera-modal[hidden],
+.checkbox-row[hidden],
+.dropzone-thumbs[hidden],
+.field-split[hidden] {
+  display: none;
+}
+
 .audio-toggle {
   position: fixed;
   bottom: 16px;
