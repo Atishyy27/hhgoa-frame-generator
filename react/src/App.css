@@ -129,8 +129,15 @@ body {
   margin: 0;
   min-height: 100vh;
   background: var(--green-dark);
-  background-image: radial-gradient(circle at 20% -10%, var(--green) 0%, var(--green-dark) 55%);
+  /* Real beach photo (Pexels License — free for commercial use, no attribution
+     required, verified reachable) under a green-tinted gradient so the photo
+     reads as atmosphere, not a busy backdrop fighting the UI on top of it. */
+  background-image:
+    radial-gradient(circle at 20% -10%, rgba(11,104,57,0.55) 0%, rgba(8,77,42,0.88) 55%, rgba(8,77,42,0.95) 100%),
+    url("https://images.pexels.com/photos/33742008/pexels-photo-33742008.jpeg?auto=compress&cs=tinysrgb&w=1920");
   background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
   animation: glowPulse 8s ease-in-out infinite;
   color: var(--cream);
   font-family: var(--font-mono);
