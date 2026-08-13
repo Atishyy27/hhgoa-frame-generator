@@ -15,6 +15,11 @@
 <canvas class="confetti-canvas" id="confetti-canvas"></canvas>
 <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
+<button type="button" class="audio-toggle" id="audio-toggle" title="Toggle ambient beach audio" aria-pressed="false">
+  <span id="audio-icon">🔇</span>
+</button>
+<audio id="beach-audio" loop preload="none" src="https://archive.org/download/naturesounds-soundtheraphy/Birds%20With%20Ocean%20Waves%20on%20the%20Beach.mp3"></audio>
+
 <div class="marquee">
   <div class="marquee-track">
     <span>BUILD. SHIP. REPEAT. &nbsp;·&nbsp; #FrameInGoa &nbsp;·&nbsp; HH GOA 2026 &nbsp;·&nbsp; LESS NOISE, MORE SIGNAL &nbsp;·&nbsp; </span>
@@ -49,10 +54,21 @@
           <img class="dropzone-thumb" id="thumb-single" alt="" hidden>
         </div>
         <input type="file" id="photo-single" accept="image/*" hidden>
+        <div class="secondary-row">
+          <button type="button" class="link-btn" id="selfie-btn">📷 or take a selfie</button>
+        </div>
         <label class="checkbox-row" id="bg-remove-row" hidden>
           <input type="checkbox" id="bg-remove">
           <span>Remove background <em>(beta, ~2-5s)</em></span>
         </label>
+      </div>
+
+      <div class="camera-modal" id="camera-modal" hidden>
+        <video id="camera-video" autoplay playsinline muted></video>
+        <div class="camera-actions">
+          <button type="button" id="camera-capture" class="primary-btn">Capture</button>
+          <button type="button" id="camera-cancel" class="link-btn">Cancel</button>
+        </div>
       </div>
 
       <div class="field" data-for="team" hidden>
@@ -82,6 +98,27 @@
         <div class="title-row">
           <input type="text" id="builder-title" placeholder="auto-generated" readonly>
           <button type="button" id="reroll-title" title="Reroll builder class">⟳</button>
+        </div>
+      </div>
+
+      <div class="field" data-for="id" hidden>
+        <label for="builder-vibes">Vibes <em>(optional, comma-separated)</em></label>
+        <input type="text" id="builder-vibes" placeholder="e.g. Music, Photography, Surfing" maxlength="60">
+      </div>
+
+      <div class="field" data-for="id" hidden>
+        <label for="builder-quote">Quote / tagline <em>(optional)</em></label>
+        <input type="text" id="builder-quote" placeholder="e.g. Build with purpose. Ship with courage." maxlength="60">
+      </div>
+
+      <div class="field field-split" data-for="id" hidden>
+        <div>
+          <label for="builder-x">X handle <em>(optional)</em></label>
+          <input type="text" id="builder-x" placeholder="@yourhandle" maxlength="20">
+        </div>
+        <div>
+          <label for="builder-github">GitHub <em>(optional)</em></label>
+          <input type="text" id="builder-github" placeholder="username" maxlength="24">
         </div>
       </div>
 
@@ -115,6 +152,7 @@
   <p>fan-built for HH Goa 2026 Task #1 · not an official HH Goa / 247pm Studio product</p>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="script.js"></script>
 </body>
 </html>

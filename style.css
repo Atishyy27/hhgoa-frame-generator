@@ -11,6 +11,80 @@
 
 * { box-sizing: border-box; }
 
+.audio-toggle {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  z-index: 55;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(254,225,1,0.4);
+  background: var(--green-dark);
+  color: var(--cream);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.audio-toggle:hover { transform: scale(1.08); }
+.audio-toggle:active { transform: scale(0.92); }
+.audio-toggle[aria-pressed="true"] { background: var(--yellow); color: var(--green-dark); }
+
+.secondary-row {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--yellow);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.field-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.field-split label { display: block; }
+
+.camera-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(8,77,42,0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.camera-modal video {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 12px;
+  border: 2px solid var(--yellow);
+  transform: scaleX(-1);
+}
+
+.camera-actions {
+  display: flex;
+  gap: 12px;
+}
+
 @keyframes glowPulse {
   0%, 100% { background-position: 20% -10%, 0 0; opacity: 1; }
   50% { background-position: 30% 0%, 0 0; opacity: 0.85; }

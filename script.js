@@ -7,11 +7,14 @@ const CREAM = "#FFFBE8";
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+const LIVE_URL = "https://atishyy27.github.io/hhgoa-frame-generator/";
+
 const state = {
   mode: "pfp",
   singlePhoto: null,
   singlePhotoProcessed: null,
   multiPhotos: [],
+  passId: null,
 };
 
 const tabs = document.querySelectorAll(".tab");
@@ -28,6 +31,18 @@ const nameInput = document.getElementById("builder-name");
 const stackInput = document.getElementById("builder-stack");
 const titleInput = document.getElementById("builder-title");
 const rerollBtn = document.getElementById("reroll-title");
+const vibesInput = document.getElementById("builder-vibes");
+const quoteInput = document.getElementById("builder-quote");
+const xInput = document.getElementById("builder-x");
+const githubInput = document.getElementById("builder-github");
+const selfieBtn = document.getElementById("selfie-btn");
+const cameraModal = document.getElementById("camera-modal");
+const cameraVideo = document.getElementById("camera-video");
+const cameraCaptureBtn = document.getElementById("camera-capture");
+const cameraCancelBtn = document.getElementById("camera-cancel");
+const audioToggle = document.getElementById("audio-toggle");
+const audioIcon = document.getElementById("audio-icon");
+const beachAudio = document.getElementById("beach-audio");
 const generateBtn = document.getElementById("generate");
 const downloadBtn = document.getElementById("download-btn");
 const shareBtn = document.getElementById("share-btn");
@@ -220,6 +235,7 @@ wireDropzone(dropzoneSingle, photoSingleInput, async files => {
   }
   state.singlePhoto = img;
   state.singlePhotoProcessed = null;
+  state.passId = null;
   bgRemoveCheckbox.checked = false;
   thumbSingle.src = img.src;
   thumbSingle.hidden = false;
@@ -251,6 +267,83 @@ wireDropzone(dropzoneMulti, photoMultiInput, async files => {
   const idle = dropzoneMulti.querySelector(".dropzone-idle");
   if (idle) idle.style.display = "none";
   runGenerate({ auto: true });
+});
+
+/* ---------- selfie capture ---------- */
+
+let cameraStream = null;
+
+async function openCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast("Camera isn't available on this browser — upload a photo instead.", "error");
+    return;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+  } catch {
+    showToast("Couldn't access the camera — check permissions.", "error");
+    return;
+  }
+  cameraVideo.srcObject = cameraStream;
+  cameraModal.hidden = false;
+}
+
+function closeCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  cameraModal.hidden = true;
+}
+
+selfieBtn.addEventListener("click", openCamera);
+cameraCancelBtn.addEventListener("click", closeCamera);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !cameraModal.hidden) closeCamera();
+});
+
+cameraCaptureBtn.addEventListener("click", () => {
+  const w = cameraVideo.videoWidth;
+  const h = cameraVideo.videoHeight;
+  if (!w || !h) { showToast("Camera not ready yet — try again.", "error"); return; }
+  const shot = document.createElement("canvas");
+  shot.width = w;
+  shot.height = h;
+  const sctx = shot.getContext("2d");
+  // Mirror the capture to match what the user saw in the (CSS-mirrored) preview.
+  sctx.translate(w, 0);
+  sctx.scale(-1, 1);
+  sctx.drawImage(cameraVideo, 0, 0, w, h);
+  closeCamera();
+
+  state.singlePhoto = shot;
+  state.singlePhotoProcessed = null;
+  state.passId = null;
+  bgRemoveCheckbox.checked = false;
+  thumbSingle.src = shot.toDataURL("image/png");
+  thumbSingle.hidden = false;
+  const idle = dropzoneSingle.querySelector(".dropzone-idle");
+  if (idle) idle.style.display = "none";
+  updateBgRemoveVisibility();
+  runGenerate({ auto: true });
+});
+
+/* ---------- ambient beach audio (CC0, archive.org) ---------- */
+
+audioToggle.addEventListener("click", async () => {
+  if (beachAudio.paused) {
+    try {
+      await beachAudio.play();
+      audioIcon.textContent = "🔊";
+      audioToggle.setAttribute("aria-pressed", "true");
+    } catch {
+      showToast("Couldn't start audio — try again.", "error");
+    }
+  } else {
+    beachAudio.pause();
+    audioIcon.textContent = "🔇";
+    audioToggle.setAttribute("aria-pressed", "false");
+  }
 });
 
 /* ---------- background remover (optional, MediaPipe selfie segmenter) ---------- */
@@ -399,6 +492,9 @@ const debouncedIdRegenerate = debounce(() => {
 
 nameInput.addEventListener("input", () => { refreshTitle(); debouncedIdRegenerate(); });
 stackInput.addEventListener("input", () => { refreshTitle(); debouncedIdRegenerate(); });
+[vibesInput, quoteInput, xInput, githubInput].forEach(el => {
+  el.addEventListener("input", debouncedIdRegenerate);
+});
 rerollBtn.addEventListener("click", () => {
   titleInput.value = generateTitle(null);
   rerollBtn.classList.remove("spinning");
@@ -406,6 +502,11 @@ rerollBtn.addEventListener("click", () => {
   rerollBtn.classList.add("spinning");
   if (state.mode === "id" && state.singlePhoto) runGenerate({ auto: true });
 });
+
+function generatePassId() {
+  const n = Math.floor(10000 + Math.random() * 90000);
+  return `HHGOA-2026-${n}`;
+}
 
 /* ---------- canvas drawing ---------- */
 
@@ -481,6 +582,154 @@ function drawPalmAccent(x, y, flip = 1) {
   ctx.restore();
 }
 
+function drawStampBox(x, y) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,251,232,0.5)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 3]);
+  roundRectPath(x, y, 120, 56, 6);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "rgba(255,251,232,0.9)";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "600 11px 'Victor Mono', monospace";
+  ctx.fillText("GOA · INDIA", x + 60, y + 24);
+  ctx.font = "700 14px 'Victor Mono', monospace";
+  ctx.fillText("HH 2026", x + 60, y + 43);
+  ctx.restore();
+}
+
+function drawCircularSeal(cx, cy, r) {
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,251,232,0.6)";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - 8, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const text = "BUILD · SHIP · REPEAT · ";
+  ctx.font = "600 10px 'Victor Mono', monospace";
+  ctx.fillStyle = "rgba(255,251,232,0.85)";
+  const radius = r - 4;
+  const anglePerChar = (Math.PI * 2) / text.length;
+  ctx.translate(cx, cy);
+  ctx.rotate(-Math.PI / 2);
+  for (let i = 0; i < text.length; i++) {
+    ctx.save();
+    ctx.rotate(i * anglePerChar);
+    ctx.translate(0, -radius);
+    ctx.textAlign = "center";
+    ctx.fillText(text[i], 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = "18px serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("🌴", cx, cy);
+  ctx.restore();
+}
+
+function drawCornerBrackets(x, y, w, h, len = 26) {
+  ctx.save();
+  ctx.strokeStyle = YELLOW;
+  ctx.lineWidth = 4;
+  ctx.lineCap = "round";
+  const corners = [
+    [x, y, 1, 1],
+    [x + w, y, -1, 1],
+    [x, y + h, 1, -1],
+    [x + w, y + h, -1, -1],
+  ];
+  corners.forEach(([cx, cy, dx, dy]) => {
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + len * dy);
+    ctx.lineTo(cx, cy);
+    ctx.lineTo(cx + len * dx, cy);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
+// Draws left-to-right, wrapping to new rows within maxWidth; returns the y
+// position just after the last row so callers can keep stacking content
+// below it — avoids fixed-offset collisions when some tags are empty.
+function drawTagPills(tags, centerX, startY, maxWidth) {
+  if (!tags.length) return startY;
+  ctx.font = "500 15px 'Victor Mono', monospace";
+  const paddingX = 14;
+  const gap = 8;
+  const pillH = 32;
+  const rowGap = 10;
+  const rows = [];
+  let row = [];
+  let rowWidth = 0;
+  tags.forEach(tag => {
+    const w = ctx.measureText(tag).width + paddingX * 2;
+    if (rowWidth + w + gap > maxWidth && row.length) {
+      rows.push({ items: row, width: rowWidth - gap });
+      row = [];
+      rowWidth = 0;
+    }
+    row.push({ text: tag, w });
+    rowWidth += w + gap;
+  });
+  if (row.length) rows.push({ items: row, width: rowWidth - gap });
+
+  let y = startY;
+  rows.forEach(r => {
+    let x = centerX - r.width / 2;
+    r.items.forEach(item => {
+      ctx.fillStyle = "rgba(255,251,232,0.12)";
+      roundRectPath(x, y, item.w, pillH, pillH / 2);
+      ctx.fill();
+      ctx.strokeStyle = YELLOW;
+      ctx.lineWidth = 1.5;
+      roundRectPath(x, y, item.w, pillH, pillH / 2);
+      ctx.stroke();
+      ctx.fillStyle = CREAM;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(item.text, x + item.w / 2, y + pillH / 2 + 1);
+      ctx.textBaseline = "alphabetic";
+      x += item.w + gap;
+    });
+    y += pillH + rowGap;
+  });
+  return y;
+}
+
+// Skips silently if the qrcode-generator CDN script failed to load — a QR
+// code is a nice-to-have flourish, never something worth breaking the card over.
+function drawQR(text, x, y, size) {
+  if (typeof qrcode !== "function") return;
+  try {
+    const qr = qrcode(0, "L");
+    qr.addData(text);
+    qr.make();
+    const count = qr.getModuleCount();
+    const cell = size / count;
+    ctx.fillStyle = CREAM;
+    ctx.fillRect(x - 6, y - 6, size + 12, size + 12);
+    ctx.fillStyle = GREEN_DARK;
+    for (let r = 0; r < count; r++) {
+      for (let c = 0; c < count; c++) {
+        if (qr.isDark(r, c)) {
+          ctx.fillRect(x + c * cell, y + r * cell, Math.ceil(cell), Math.ceil(cell));
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("QR generation failed:", err);
+  }
+}
+
 function drawChrome({ bottomBandHeight = 150, topBandHeight = 60 } = {}) {
   ctx.fillStyle = GREEN;
   ctx.fillRect(0, 0, SIZE, SIZE);
@@ -547,7 +796,7 @@ function drawTeam(imgs) {
   });
 }
 
-function drawID(img, name, stack, title) {
+function drawID(img, data) {
   ctx.fillStyle = GREEN;
   ctx.fillRect(0, 0, SIZE, SIZE);
 
@@ -559,44 +808,90 @@ function drawID(img, name, stack, title) {
   ctx.textBaseline = "middle";
   ctx.textAlign = "center";
   ctx.fillText("2:47 PM", 83, 36);
+  ctx.textBaseline = "alphabetic";
+
+  drawStampBox(24, 62);
 
   ctx.fillStyle = CREAM;
   ctx.font = "500 15px 'Victor Mono', monospace";
   ctx.textAlign = "right";
   ctx.fillText("#FrameInGoa", SIZE - 24, 36);
 
-  const photoSize = 560;
+  drawCircularSeal(SIZE - 88, 128, 52);
+
+  const photoSize = 440;
   const photoX = (SIZE - photoSize) / 2;
-  const photoY = 90;
+  const photoY = 200;
   ctx.strokeStyle = YELLOW;
   ctx.lineWidth = 8;
   roundRectPath(photoX - 6, photoY - 6, photoSize + 12, photoSize + 12, 26);
   ctx.stroke();
   drawPhotoOrPlaceholder(img, photoX, photoY, photoSize, photoSize, 20);
+  drawCornerBrackets(photoX - 6, photoY - 6, photoSize + 12, photoSize + 12);
+
+  let y = photoY + photoSize + 60;
 
   ctx.textAlign = "center";
   ctx.fillStyle = CREAM;
-  ctx.font = "700 46px 'Imbue', serif";
-  ctx.fillText(name || "BUILDER", SIZE / 2, photoY + photoSize + 70);
+  ctx.font = "700 44px 'Imbue', serif";
+  ctx.fillText(data.name || "BUILDER", SIZE / 2, y);
+  y += 40;
 
   ctx.fillStyle = YELLOW;
-  ctx.font = "500 22px 'Victor Mono', monospace";
-  ctx.fillText(stack || "Full-Stack Builder", SIZE / 2, photoY + photoSize + 110);
+  ctx.font = "500 20px 'Victor Mono', monospace";
+  ctx.fillText(data.stack || "Full-Stack Builder", SIZE / 2, y);
+  y += 34;
 
-  const badgeText = title || "Terminal Sorcerer";
+  if (data.quote) {
+    ctx.fillStyle = CREAM;
+    ctx.globalAlpha = 0.85;
+    ctx.font = "italic 400 16px 'Victor Mono', monospace";
+    ctx.fillText(`"${data.quote}"`, SIZE / 2, y);
+    ctx.globalAlpha = 1;
+    y += 34;
+  }
+
+  const vibeTags = (data.vibes || "").split(",").map(s => s.trim()).filter(Boolean);
+  if (vibeTags.length) {
+    y += 6;
+    y = drawTagPills(vibeTags, SIZE / 2, y, SIZE - 160);
+    y += 6;
+  }
+
+  const badgeText = data.title || "Terminal Sorcerer";
   ctx.font = "600 20px 'Victor Mono', monospace";
   const badgeW = ctx.measureText(badgeText).width + 44;
-  const badgeX = (SIZE - badgeW) / 2;
-  const badgeY = photoY + photoSize + 140;
   ctx.fillStyle = YELLOW;
-  roundRectPath(badgeX, badgeY, badgeW, 42, 21);
+  roundRectPath((SIZE - badgeW) / 2, y, badgeW, 42, 21);
   ctx.fill();
   ctx.fillStyle = GREEN_DARK;
-  ctx.fillText(badgeText, SIZE / 2, badgeY + 21);
+  ctx.textBaseline = "middle";
+  ctx.fillText(badgeText, SIZE / 2, y + 22);
+  ctx.textBaseline = "alphabetic";
+  y += 62;
 
+  if (data.xHandle || data.githubHandle) {
+    const parts = [];
+    if (data.xHandle) parts.push(`𝕏 ${data.xHandle.replace(/^@/, "")}`);
+    if (data.githubHandle) parts.push(`⌥ ${data.githubHandle}`);
+    ctx.fillStyle = CREAM;
+    ctx.font = "500 15px 'Victor Mono', monospace";
+    ctx.fillText(parts.join("    "), SIZE / 2, y);
+    y += 30;
+  }
+
+  const passId = data.passId || "HHGOA-2026-00000";
+  ctx.textAlign = "left";
+  ctx.fillStyle = "rgba(255,251,232,0.7)";
+  ctx.font = "500 14px 'Victor Mono', monospace";
+  ctx.fillText(passId, 32, SIZE - 38);
+
+  drawQR(LIVE_URL, SIZE - 32 - 84, SIZE - 44 - 84, 84);
+
+  ctx.textAlign = "center";
   ctx.fillStyle = CREAM;
-  ctx.font = "500 18px 'Victor Mono', monospace";
-  ctx.fillText("HH GOA 2026 · BUILDER ID", SIZE / 2, SIZE - 44);
+  ctx.font = "500 16px 'Victor Mono', monospace";
+  ctx.fillText("HH GOA 2026 · BUILDER ID · GOA, INDIA", SIZE / 2, SIZE - 16);
 }
 
 function drawForMode(_unusedTrigger) {
@@ -604,7 +899,17 @@ function drawForMode(_unusedTrigger) {
     drawPFP(pickSinglePhoto());
   } else if (state.mode === "id") {
     if (!titleInput.value) refreshTitle();
-    drawID(pickSinglePhoto(), nameInput.value.trim(), stackInput.value.trim(), titleInput.value);
+    if (!state.passId) state.passId = generatePassId();
+    drawID(pickSinglePhoto(), {
+      name: nameInput.value.trim(),
+      stack: stackInput.value.trim(),
+      title: titleInput.value,
+      quote: quoteInput.value.trim(),
+      vibes: vibesInput.value.trim(),
+      xHandle: xInput.value.trim(),
+      githubHandle: githubInput.value.trim(),
+      passId: state.passId,
+    });
   } else {
     drawTeam(state.multiPhotos);
   }
