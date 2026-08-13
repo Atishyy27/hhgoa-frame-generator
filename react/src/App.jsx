@@ -271,13 +271,30 @@ export default function App() {
     }
   }
 
-  function toggleAudio() {
+  async function toggleAudio() {
     const audio = audioRef.current;
-    if (audio.paused) {
-      audio.play().then(() => setAudioPlaying(true)).catch(() => showToast("Couldn't start audio — try again.", "error"));
-    } else {
+    if (!audio.paused) {
       audio.pause();
       setAudioPlaying(false);
+      return;
+    }
+    try {
+      await audio.play();
+      setAudioPlaying(true);
+    } catch (err) {
+      console.warn("audio.play() failed, retrying after reload:", err && err.name, err && err.message);
+      // preload="none" means nothing has actually loaded yet — the very first
+      // play() sometimes races the initial network fetch and rejects before
+      // any data has arrived. One explicit load()+play() retry covers that
+      // without needing to guess at a root cause I can't reproduce myself.
+      try {
+        audio.load();
+        await audio.play();
+        setAudioPlaying(true);
+      } catch (err2) {
+        console.warn("audio retry also failed:", err2 && err2.name, err2 && err2.message);
+        showToast("Couldn't start audio — try again.", "error");
+      }
     }
   }
 
@@ -306,7 +323,7 @@ export default function App() {
       >
         <span>{audioPlaying ? "🔊" : "🔇"}</span>
       </button>
-      <audio ref={audioRef} loop preload="none"
+      <audio ref={audioRef} loop preload="metadata"
         src="https://archive.org/download/naturesounds-soundtheraphy/Birds%20With%20Ocean%20Waves%20on%20the%20Beach.mp3" />
 
       <div className="marquee">
